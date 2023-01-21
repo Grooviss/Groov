@@ -1,0 +1,114 @@
+import os
+import discord
+from discord.ext import commands
+import random
+from dotenv import load_dotenv
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+
+
+
+player_hand = []
+dealer_hand = []
+
+"client = discord.Client(intents=discord.Intents.all())"
+client = commands.Bot(command_prefix='!', intents=discord.Intents.all())
+
+deck = [2, 3, 4, 5, 6, 7, 8, 9, 'J', 'Q', 'K', 'A']
+#Apskaiciuoja kortu verte
+def hand_value (hand):
+    value = 0
+    aces = 0
+    for card in hand:
+        if card == 'A':
+            aces += 1
+            value += 11
+        elif card in ['K', 'Q', 'J']:
+            value += 10
+        else:
+            value += card
+    while value > 21 and aces > 0:
+        value -= 10
+        aces -= 1
+    return value
+@client.command()
+#Komanda kad pradetu zaidima ir randomizintu kortas dealerio ir zaidejo
+async def blackjack(msg):
+    global player_hand, dealer_hand
+    player_hand.clear()
+    dealer_hand.clear()
+    player_hand.append(random.choice(deck))
+    dealer_hand.append(random.choice(deck))
+    player_hand.append(random.choice(deck))
+    dealer_hand.append(random.choice(deck))
+    player_value = hand_value(player_hand)
+    dealer_value = hand_value(dealer_hand)
+
+    langas = discord.Embed()
+    langas.add_field(name=" :diamonds: TAVO KORTOS IR JŲ VERTĖ :diamonds: ", value=f'🃏**Player value: Card 1:** {player_hand[0]} **Card 2:** {player_hand[1]} **value:** {player_value}🃏')
+    await msg.reply(embed=langas)
+@client.command()
+#zaidejas gauna nauja korta,
+#jei virs 21 zaidejas pralaimi
+async def hit(msg):
+    global player_hand, dealer_hand
+    player_hand.append(random.choice(deck))
+    player_value = hand_value(player_hand)
+    if player_value > 21:
+        langas = discord.Embed()
+        langas.add_field(name=":x: TU PRALAIMĖJAI! :x: ", value=f'**Your hand:** {player_hand} **value:** {player_value}')
+        await msg.reply(embed=langas)
+    else:
+        langas = discord.Embed()
+        langas.add_field(name=" :diamonds: TAVO KORTOS IR JŲ VERTĖ :diamonds: ", value=f'**Your hand:** {player_hand}, **value:** {player_value}')
+        await msg.reply(embed=langas)
+@client.command()
+async def stay(msg):
+    #zaidejas negauna naujos kortos ir uzbaigia zaidima
+    #jeigu dealerio kortos turi didesne verte negu tavo ir maziau negu 21 jis laimi
+    #jeigu tu turi daugiau negu dealeris ir maziau negu 21 tu laimi,
+    #jeigu abu turi lygiai buna lygiosios.
+    global player_hand, dealer_hand
+    dealer_value=hand_value(dealer_hand)
+    player_value = hand_value(player_hand)
+    while dealer_value < 17:
+        dealer_hand.append(random.choice(deck))
+        dealer_value = hand_value(dealer_hand)
+    if dealer_value > 21 or dealer_value < player_value:
+        langas = discord.Embed()
+        langas.add_field(name="**:white_check_mark: TU LAIMĖJAI!:white_check_mark: **", value=f'**Your hand:** {player_hand}, **Value** {player_value}🃏')
+        await msg.reply(embed=langas)
+        langas = discord.Embed()
+        langas.add_field(name=" :diamonds: **DEALERIO KORTOS** :diamonds: ", value=f'**🃏Dealer hand:** {dealer_hand}, **Dealer value:** {dealer_value} 🃏')
+        await msg.reply(embed=langas)
+    elif dealer_value == player_value:
+        langas = discord.Embed()
+        langas.add_field(name=' :interrobang: **Lygiosios!** :interrobang: ', value=f'')
+        await msg.reply(embed=langas)
+    else:
+        langas = discord.Embed()
+        langas.add_field(name="** :x: TU PRALAIMĖJAI! :x: **", value=f'** Your hand: {player_hand}, **value:** {player_value}🃏')
+        await msg.reply(embed=langas)
+        langas = discord.Embed()
+        langas.add_field(name=":diamonds: **DEALERIO KORTOS** :diamonds: ", value=f'🃏**Dealer hand:** {dealer_hand}, **Dealer value:** {dealer_value}🃏 ')
+        await msg.reply(embed=langas)
+@client.command()
+async def pagalba(msg):
+    #paraso visas komandas
+    langas = discord.Embed()
+    langas.add_field(name = '**!blackjack**', value = f"Pradeda žaidimą")
+    langas.add_field(name = '**!hit**', value = f"Gauname naują kortą")
+    langas.add_field(name = '**!stay**', value = f"Užbaigi žaidimą")
+    await msg.reply(embed=langas)
+@client.command()
+async def taisykles(msg):
+    #paraso taisykles zaidimo
+    langas = discord.Embed()
+    langas.add_field( name =f"**Žaidimas prasideda žaidėjui gavus 2 kortas, jų vertė gali skirtis**", value="")
+    langas.add_field( name= f"**Skaičiai būna nuo 2 iki 10 tai reiškia, kad skaičių vertė priklauso nuo pačio skaičiaus ant kortos**", value = "")
+    langas.add_field(name=f"**Kitos kortos veikia šiek tiek kitaip Karalienė, Bartukas, Karalius - Vertė 10, o tūzas gali būti 1 arba 11(priklauso nuo kitos kortos vertės ir ar žaidėjo vertė nėra virš 21)**", value="")
+    langas.add_field(name =f'**Po kortu gavimo žaidėjas gali pasirinkti: 1: ar gauti dar vieną kortą(!hit). 2: Neimti kortos ir užbaigti žaidimą(!stay), kortų vertė negali būti virš 21!!!!**', value = "")
+    langas.add_field(name=f'**Kai žaidėjas pasirenka hit arba stay dealeris pasiema dar vieną kortą jeigu jo praeitų 2 kortų vertė nėra daugiau 16**', value="")
+    langas.add_field(name=f"**Jeigu žaidėjo kortos vertos daugiau negu dealerio jis laimi, jei dealerio kortos vertos daugiau dealeris laimi, jei abiejų žaidėjų kortos vertos tiek pat būna lygiosios**", value="")
+    await msg.reply(embed=langas)
+client.run(TOKEN)
